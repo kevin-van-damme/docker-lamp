@@ -2,50 +2,43 @@
 require('db.inc.php');
 
 $errors = [];
-
-print '<pre>';
-print_r($_FILES);
-print '</pre>';
-
-$inputUrl = '';
+$success = [];
+$imgUpload = '';
 
 if (isset($_POST['formSubmit'])) {
+    if (isset($_FILES['imgUpload'])) {
+        $errors     = array();
+        $maxsize    = 1097152;
+        $acceptable = array(
+            'image/jpeg',
+            'image/jpg',
+            'image/png'
+        );
 
-    // validation for URL
-    if (!isset($_POST['inputUrl'])) {
-        $errors[] = "URL is required";
-    } else {
-        $inputUrl = $_POST['inputUrl'];
-
-        // check if URL is no longer than 255 characters
-        if (strlen($inputUrl) == 0) {
-            $errors[] = "URL is required";
+        if (($_FILES['imgUpload']['size'] >= $maxsize)) {
+            $errors[] = 'File too large. File must be less than 1 megabytes.';
+        } else if (($_FILES["imgUpload"]["size"] == 0)) {
+            $errors[] = 'Please upload a file...';
+        }
+        $file_mime = mime_content_type($_FILES['imgUpload']['tmp_name']);
+        if (!in_array($file_mime, $acceptable)) {
+            $errors[] = 'Invalid file type. Only JPG, JPEG and PNG types are accepted.';
         }
 
-        // check if URL is valid
-        if (!preg_match("/(http|https|ftp|ftps)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(\/\S*)?/", $inputUrl)) {
-            $errors[] = "URL is not valid";
+        if (count($errors) === 0) {
+            $upload_dir = "uploads/";
+            $upload_file = $upload_dir . basename($_FILES["imgUpload"]["tmp_name"]) . "." . basename($_FILES["imgUpload"]["type"]);
+
+            if (move_uploaded_file($_FILES['imgUpload']['tmp_name'], $upload_file)) {
+                echo "File is uploaded successfully!";
+                insertDbImage($upload_file);
+            } else {
+                $errors[] = 'Error uploading file. Please try again.';
+            }
         }
     }
-
-    // if (!count($errors)) {
-
-
-    //     // haal og title, descrr,.... op via api
-    //     $ogData = getOgViaApi($inputUrl);
-
-    //     $ogtitle = @$ogData->hybridGraph->title ?? '';
-    //     $ogdescription = @$ogData->hybridGraph->description ?? '';
-    //     $ogimage = @$ogData->hybridGraph->image ?? '';;
-
-    //     // insert into db
-    //     $id = insertOgLink($inputUrl, $ogtitle, $ogdescription, $ogimage);
-
-    //     if (!$id) {
-    //         $errors[] = "Something unexplainable happened...";
-    //     }
-    // }
 }
+
 $items = getDbImages();
 
 ?>
